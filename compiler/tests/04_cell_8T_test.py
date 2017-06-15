@@ -1,8 +1,6 @@
 #!/usr/bin/env python2.7
 """
-Run regresion tests on a parameterized nand_2.  This module doesn't
-generate multi_finger 2_input nand gate.  It generate only the minimum
-size 2_input nand gate that is nmos_width=2*tech.drc[minwidth_tx].
+Run regresion tests on a 8T cell
 """
 
 import unittest
