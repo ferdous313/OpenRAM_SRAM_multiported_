@@ -6,9 +6,9 @@ from ptx import ptx
 from vector import vector
 from globals import OPTS
 
-class cell_8T(design.design):
+class cell_multiport(design.design):
     """
-    This module generates gds of a 8T cell
+    This module generates gds of a multiport cell
     """
 
     c = reload(__import__(OPTS.config.bitcell))
@@ -24,6 +24,7 @@ class cell_8T(design.design):
         self.height = height
         self.add_pins()
         self.create_layout()
+
         self.DRC_LVS()
 
     def add_pins(self):
@@ -45,12 +46,12 @@ class cell_8T(design.design):
         self.connect_well_contacts()
         self.connect_rails_lima()
         self.connect_tx()
-        self.route_pins()
-        self.extend_wells()
+        #limaself.route_pins()
+        #self.extend_wells()
         self.extend_active()
-        self.connect_sources_access_nmos_lima()
-        self.connect_wordline_bitline_lima()      
-        self.route_output_gate_WordLine1_lima()
+        #limaself.connect_sources_access_nmos_lima()
+        #limaself.connect_wordline_bitline_lima()      
+        #limaself.route_output_gate_WordLine1_lima()
        
     # Determine transistor size
     def determine_sizes(self):
@@ -81,7 +82,7 @@ class cell_8T(design.design):
                          tx_type="pmos")
         self.add_mod(self.pmos2)
 
-        self.nmos3 = ptx(width=self.nmos_size,
+        """#limaself.nmos3 = ptx(width=self.nmos_size,
                          mults=self.tx_mults,
                          tx_type="nmos")
         self.add_mod(self.nmos3)
@@ -97,7 +98,7 @@ class cell_8T(design.design):
         self.nmos6 = ptx(width=self.nmos_size,
                          mults=self.tx_mults,
                          tx_type="nmos")
-        self.add_mod(self.nmos6)
+        self.add_mod(self.nmos6)"""
 
     def setup_layout_constants(self):
         """ Calculate the layout constraints """
@@ -160,7 +161,7 @@ class cell_8T(design.design):
                       mirror="MX")
         self.connect_inst(["Q", "Q_bar", "gnd", "gnd"])
 
-       #lima: nmos3 and nmos4
+        """#lima: nmos3 and nmos4
        
         edge_to_nmos = max(drc["metal1_to_metal1"]
                             - self.nmos3.active_contact_positions[0].y,
@@ -192,7 +193,7 @@ class cell_8T(design.design):
         via_offset=vector(self.nmos4.active_contact_positions[1].x + 3.1*drc["minwidth_metal1"],self.nmos3.height-10* drc["minwidth_metal1"])
         self.add_via(layer_stack,via_offset)
        
-       # lima nmos5 and nmos 6 added
+        # lima nmos5 and nmos 6 added
 
         self.nmos_position5 = vector(self.nmos5.width, 6 * drc["minwidth_metal1"] )
         offset = self.nmos_position5+ vector(self.nmos5.width/2+drc["active_to_body_active"],self.nmos5.height-12* drc["minwidth_metal1"])
@@ -216,7 +217,7 @@ class cell_8T(design.design):
         self.connect_inst(["Q", "WL2", "BL2", "gnd"])
         layer_stack = ("metal1", "via1", "metal2")
         via_offset=vector(self.nmos6.active_contact_positions[1].x + 12.5* drc["minwidth_metal2"],self.nmos3.height-10* drc["minwidth_metal1"])
-        self.add_via(layer_stack,via_offset)
+        self.add_via(layer_stack,via_offset)"""
 
         # determines the spacing between the edge and pmos
         edge_to_pmos = max(drc["metal1_to_metal1"] \
@@ -791,6 +792,8 @@ class cell_8T(design.design):
         self.add_label(text="BL2",
                       layer="metal2",
                       offset=offset)
+
+
 
     def route_input_gate_A_lima(self):
         """ routing for input A """
