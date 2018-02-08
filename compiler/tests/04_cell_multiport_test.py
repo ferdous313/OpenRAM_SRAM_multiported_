@@ -1,8 +1,6 @@
 #!/usr/bin/env python2.7
 """
-Run regresion tests on a parameterized nand_3.
-This module doesn't generate multi_finger 3_input nand gate.
-It generate only the minimum size 3_input nand gate that is nmos_width=3*tech.drc[minwidth_tx].
+Run regresion tests on a multiport cell
 """
 
 import unittest
@@ -12,27 +10,30 @@ sys.path.append(os.path.join(sys.path[0],".."))
 import globals
 import debug
 import calibre
+import sys
 
 OPTS = globals.OPTS
 
-#@unittest.skip("SKIPPING 04_nand_3_test")
-class nand_3_test(unittest.TestCase):
+#@unittest.skip("SKIPPING 04_nand_2_test")
+
+
+class cell_multiport_test(unittest.TestCase):
 
     def runTest(self):
         globals.init_openram("config_20_{0}".format(OPTS.tech_name))
         # we will manually run lvs/drc
         OPTS.check_lvsdrc = False
 
-        import nand_3
+        import cell_multiport
         import tech
 
-        debug.info(2, "Checking 3-input nand gate")
-        tx = nand_3.nand_3(name="nand_3", nmos_width=3 * tech.drc["minwidth_tx"])
-
+        debug.info(2, "Checking cell_multiport")
+        tx = cell_multiport.cell_multiport(name="cell_multiport", nmos_width=2 * tech.drc["minwidth_tx"])
         OPTS.check_lvsdrc = True
         self.local_check(tx)
         #globals.end_openram()
         
+
     def local_check(self, tx):
         tempspice = OPTS.openram_temp + "temp.sp"
         tempgds = OPTS.openram_temp + "temp.gds"

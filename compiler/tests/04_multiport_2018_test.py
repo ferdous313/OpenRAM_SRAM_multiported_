@@ -1,8 +1,8 @@
 #!/usr/bin/env python2.7
 """
-Run regresion tests on a parameterized nand_3.
-This module doesn't generate multi_finger 3_input nand gate.
-It generate only the minimum size 3_input nand gate that is nmos_width=3*tech.drc[minwidth_tx].
+Run regresion tests on a parameterized nand_2.  This module doesn't
+generate multi_finger 2_input nand gate.  It generate only the minimum
+size 2_input nand gate that is nmos_width=2*tech.drc[minwidth_tx].
 """
 
 import unittest
@@ -12,27 +12,30 @@ sys.path.append(os.path.join(sys.path[0],".."))
 import globals
 import debug
 import calibre
+import sys
 
 OPTS = globals.OPTS
 
-#@unittest.skip("SKIPPING 04_nand_3_test")
-class nand_3_test(unittest.TestCase):
+#@unittest.skip("SKIPPING 04_nand_2_test")
+
+
+class multiport_2018_test(unittest.TestCase):
 
     def runTest(self):
         globals.init_openram("config_20_{0}".format(OPTS.tech_name))
         # we will manually run lvs/drc
         OPTS.check_lvsdrc = False
 
-        import nand_3
+        import nand_2
         import tech
 
-        debug.info(2, "Checking 3-input nand gate")
-        tx = nand_3.nand_3(name="nand_3", nmos_width=3 * tech.drc["minwidth_tx"])
-
+        debug.info(2, "Checking 2-input nand gate")
+        tx = multiport_2018.multiport_2018(name="multiport_2018", nmos_width=2 * tech.drc["minwidth_tx"])
         OPTS.check_lvsdrc = True
         self.local_check(tx)
         #globals.end_openram()
         
+
     def local_check(self, tx):
         tempspice = OPTS.openram_temp + "temp.sp"
         tempgds = OPTS.openram_temp + "temp.gds"
