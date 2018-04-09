@@ -27,8 +27,8 @@ class nand_2(design.design):
 
         self.nmos_width = nmos_width
         self.height = height
-        self.down_ptx_no=5
-        self.no_read_only_port=2
+        self.down_ptx_no=4
+        self.no_read_only_port=4
 
         self.add_pins()
         self.create_layout()

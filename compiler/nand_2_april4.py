@@ -27,7 +27,7 @@ class nand_2(design.design):
 
         self.nmos_width = nmos_width
         self.height = height
-        self.down_ptx_no=5
+        self.down_ptx_no=2
         self.no_read_only_port=2
 
         self.add_pins()
@@ -628,8 +628,8 @@ class nand_2(design.design):
                       mod=self.nmos1,
                       offset=offset,
                       mirror="MX")
-        #self.connect_inst(["Q_bar", "Q", "gnd", "gnd"])
-        self.connect_inst(["gnd", "Q", "Q_bar", "gnd"])
+        self.connect_inst(["Q_bar", "Q", "gnd", "gnd"])
+
         self.nmos_position2 = vector(self.nmos2.active_width - self.nmos2.active_contact.width+.5*drc["minwidth_metal1"], 
                                      self.nmos_position1.y)
         offset = self.nmos_position2 + vector(0,self.nmos2.height)
@@ -637,7 +637,7 @@ class nand_2(design.design):
                       mod=self.nmos2,
                       offset=offset,
                       mirror="MX")
-        self.connect_inst(["gnd", "Q_bar", "Q", "gnd"])
+        self.connect_inst(["Q", "Q_bar", "gnd", "gnd"])
 
         # determines the spacing between the edge and pmos
         edge_to_pmos = max(drc["metal1_to_metal1"] \
@@ -653,12 +653,11 @@ class nand_2(design.design):
                       offset=self.pmos_position1)
         #self.connect_inst(["vdd", "Q", "Q_bar", "vdd"])
         self.connect_inst(["vdd", "Q", "Q_bar", "vdd"])
-        #self.connect_inst(["Q_bar","Q","vdd","vdd"])
         self.pmos_position2 = vector(self.nmos_position2.x, self.pmos_position1.y)
         self.add_inst(name="pmos2",
                       mod=self.pmos2,
                       offset=self.pmos_position2)
-        self.connect_inst(["vdd","Q_bar", "Q","vdd"])
+        self.connect_inst(["vdd", "Q_bar", "Q", "vdd"])
     
     
     def connect_well_contacts_lima(self):
@@ -817,8 +816,7 @@ class nand_2(design.design):
                           mod=self.nmos_ptx,
                           offset= self.nmos3_position,
                           mirror="MX")
-            #self.connect_inst([ "Q_bar","WL{0}".format(i), "BL{0}".format(i),"gnd"])
-            self.connect_inst([ "BL{0}".format(i),"WL{0}".format(i), "Q_bar","gnd"])
+            self.connect_inst([ "Q_bar","WL{0}".format(i), "BL{0}".format(i),"gnd"])
             print("Lines Creating BL and WL****************************")
             print("WL{0} and BL{0}".format(i,i))
             self.nmos_down_names.append(self.nmos_ptx)
@@ -950,7 +948,7 @@ class nand_2(design.design):
                           mod=self.nmos_ptx,
                           offset= self.nmos3_position,
                           mirror="MX")
-            self.connect_inst(["BL_bar{0}".format(j),"WL{0}".format(j), "Q","gnd"])
+            self.connect_inst([ "Q","WL{0}".format(j), "BL_bar{0}".format(j),"gnd"])
             #print("Printing Lines**************")
 	    #print("WL{0} and BL_bar{0}".format(i,i))
             self.nmos_down_names.append(self.nmos_ptx)
@@ -1020,7 +1018,7 @@ class nand_2(design.design):
             start=self.wordline_left=vector(-self.nmos1.width*self.down_ptx_no,offset_contact_bar.y)
             #offset_label=self.wordline_right=vector(self.end_of_ptx_position_left.x+drc["minwidth_metal1"], offset_contact_bar.y)
             offset_label=self.wordline_right=vector(start.x, offset_contact_bar.y)
-            end =  vector(self.nmos1.width*self.down_ptx_no+1+2*drc["minwidth_metal1"], offset_contact_bar.y)
+            end =  vector(self.nmos1.width*self.down_ptx_no+1, offset_contact_bar.y)
             #gnd_width = self.end_of_ptx_position_right.x-self.end_of_ptx_position_left.x+ self.down_ptx_no*.5*self.nmos1.width
             self.add_path("metal1",[start, end])
             offset=end
@@ -1188,7 +1186,6 @@ class nand_2(design.design):
                           offset= self.nmos_left_side_position,
                           mirror="MX")
                 self.connect_inst([ "RBL{0}".format(i),"Q", "net{0}".format(i),"gnd"])
-                #self.connect_inst([ "net{0}".format(i), "RBL{0}".format(i),"Q","gnd"])
                 print("Lines Creating RBL ****************************")
                 print("RBL{0}".format(i))
                 #extend poly to Q
@@ -1198,9 +1195,9 @@ class nand_2(design.design):
               
                 height=self.contact_Q_position.y-self.nmos_left_side_position.y+drc["minwidth_poly"]+drc["minwidth_metal3"]
                 self.add_rect(layer="poly",
-                               offset=vector(poly_position_side_ptx,self.nmos_left_side_position.y-3*drc["minwidth_poly"]),
+                               offset=vector(poly_position_side_ptx,self.nmos_left_side_position.y-drc["minwidth_poly"]),
                                width=drc["minwidth_poly"],
-                               height=height+3*drc["minwidth_poly"])     
+                               height=height)     
                 
                 self.add_contact (layers=("poly", "contact", "metal1"),
                                   #offset=vector(poly_position_side_ptx,self.input_position_Q.y+drc["minwidth_metal1"]),
@@ -1254,7 +1251,7 @@ class nand_2(design.design):
                           mod=self.nmos_ptx,
                           offset= self.nmos_left_side_position_bar,
                           mirror="MX")
-                self.connect_inst(["RBL_bar{0}".format(i),"Q_bar","net{0}".format(i),"gnd"])
+                self.connect_inst([ "RBL{0}_bar".format(i),"Q_bar", "net{0}".format(i),"gnd"])
                 print("Lines Creating RBL ****************************")
                 print("RBL{0}".format(i))
                 self.nmos_side_position_left=self.nmos_left_side_position_bar
@@ -1263,9 +1260,9 @@ class nand_2(design.design):
                 
                 height=self.contact_Q_bar_position.y-self.nmos_left_side_position_bar.y
                 self.add_rect(layer="poly",
-                               offset=vector(poly_position_side_ptx_bar,self.nmos_left_side_position_bar.y-3*drc["minwidth_poly"]),
+                               offset=vector(poly_position_side_ptx_bar,self.nmos_left_side_position_bar.y-drc["minwidth_poly"]),
                                width=drc["minwidth_poly"],
-                               height=height+3*drc["minwidth_poly"])               
+                               height=height)               
                 
                 self.add_contact (layers=("poly", "contact", "metal1"),
                                   offset=vector(poly_position_side_ptx_bar,self.contact_Q_bar_position.y-drc["minwidth_metal3"]),
@@ -1318,8 +1315,7 @@ class nand_2(design.design):
                           mod=self.nmos_R_Row_ptx,
                           offset= offset,
                           mirror="MX")
-                #self.connect_inst([ "net{0}".format(i),"R_Row{0}".format(i),"gnd","gnd"])
-                self.connect_inst([ "gnd","R_Row{0}".format(i),"net{0}".format(i),"gnd"])
+                self.connect_inst([ "net{0}".format(i),"R_Row{0}".format(i),"gnd","gnd"])
                 self.R_Row_position=offset
                 #Connect Source of R-Row ptx to gnd  
                 height=(7.5)*drc["metal1_to_metal1"]
@@ -1371,7 +1367,7 @@ class nand_2(design.design):
                           mod=self.nmos_ptx,
                           offset= self.nmos_right_side_position,
                           mirror="MX")
-                self.connect_inst([ "RBL{0}".format(i),"Q","net{0}".format(i),"gnd"])
+                self.connect_inst([ "RBL{0}".format(i),"Q", "net{0}".format(i),"gnd"])
                 print("Lines Creating RBL ****************************")
                 print("RBL{0}".format(i))
                 #extend poly to Q
@@ -1381,9 +1377,9 @@ class nand_2(design.design):
                
                 height=self.contact_Q_position.y-self.nmos_right_side_position.y+drc["minwidth_poly"]+drc["minwidth_metal3"]
                 self.add_rect(layer="poly",
-                               offset=vector(poly_position_side_ptx,self.nmos_right_side_position.y-4*drc["minwidth_poly"]),
+                               offset=vector(poly_position_side_ptx,self.nmos_right_side_position.y-drc["minwidth_poly"]),
                                width=drc["minwidth_poly"],
-                               height=height+6*drc["minwidth_poly"]) 
+                               height=height) 
                     
                 
                 self.add_contact (layers=("poly", "contact", "metal1"),
@@ -1397,7 +1393,6 @@ class nand_2(design.design):
                 layer_stack_via1 = ["metal1", "via1", "metal2"]   
                 self.add_via(layer_stack_via1,via_offset_poly,rotate=270)
                 layer_stack_via2 = ["metal2", "via2", "metal3"] 
-                #via_offset_poly_2 = vector(poly_position_side_ptx+drc[,self.contact_Q_position.y+drc["minwidth_metal1"]*1.5)
                 self.add_via(layer_stack_via2,via_offset_poly,rotate=270)
 
 
@@ -1448,7 +1443,7 @@ class nand_2(design.design):
                           mod=self.nmos_ptx,
                           offset= self.nmos_right_side_position_bar,
                           mirror="MX")
-                self.connect_inst([ "RBL_bar{0}".format(i),"Q_bar","net{0}".format(i),"gnd"])
+                self.connect_inst([ "RBL{0}_bar".format(i),"Q_bar", "net{0}".format(i),"gnd"])
                 print("Lines Creating RBL ****************************")
                 print("RBL{0}".format(i))
                 self.nmos_side_position_right=self.nmos_right_side_position_bar
@@ -1459,9 +1454,9 @@ class nand_2(design.design):
 
                 height=self.contact_Q_bar_position.y-self.nmos_right_side_position_bar.y
                 self.add_rect(layer="poly",
-                               offset=vector(poly_position_side_ptx_bar,self.nmos_right_side_position_bar.y-3*drc["minwidth_poly"]),
+                               offset=vector(poly_position_side_ptx_bar,self.nmos_right_side_position_bar.y-drc["minwidth_poly"]),
                                width=drc["minwidth_poly"],
-                               height=height+3*drc["minwidth_poly"])             
+                               height=height)               
                 
                 self.add_contact (layers=("poly", "contact", "metal1"),
                                   offset=vector(poly_position_side_ptx_bar+drc["minwidth_metal1"]*.5,self.contact_Q_bar_position.y-2*drc["minwidth_metal3"]),
@@ -1571,7 +1566,7 @@ class nand_2(design.design):
                           mod=self.nmos_R_Row_ptx,
                           offset= offset,
                           mirror="MX")
-                self.connect_inst(["gnd","R_Row{0}".format(i),"net{0}".format(i),"gnd"])
+                self.connect_inst([ "net{0}".format(i),"R_Row{0}".format(i),"gnd","gnd"])
                 self.R_Row_position_bar=offset
                 #Connect Source of R-Row ptx to gnd  
                 height=(7.5)*drc["metal1_to_metal1"]

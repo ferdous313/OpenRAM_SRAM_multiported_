@@ -6,7 +6,7 @@ from ptx import ptx
 from vector import vector
 from globals import OPTS
 
-class nand_2(design.design):
+class multiport(design.design):
     """
     This module generates gds of a parametrically sized 2_input nand.
     This model use ptx to generate a 2_input nand within a cetrain height.
@@ -17,9 +17,11 @@ class nand_2(design.design):
     """
 
     c = reload(__import__(OPTS.config.bitcell))
+    #c = reload(__import__(OPTS.config.multiport))
     bitcell = getattr(c, OPTS.config.bitcell)
-
+    #multiport = getattr(c, OPTS.config.multiport)
     def __init__(self, name, nmos_width=1, height=bitcell.chars["height"]):
+    #def __init__(self, name, nmos_width=1, height=multiport.chars["height"]):
         """ Constructor """
         design.design.__init__(self, name)
         debug.info(2, "create nand_2 strcuture {0} with size of {1}".format(
