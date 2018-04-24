@@ -26,12 +26,12 @@ class array_test(unittest.TestCase):
         import bitcell_array
 
         debug.info(2, "Testing 3x3 array for 6t_cell")
-        a = bitcell_array.bitcell_array(name="bitcell_array", cols=3, rows=3)
+        a = bitcell_array.bitcell_array(name="bitcell_array", cols=1, rows=1)
 
         OPTS.check_lvsdrc = True
 
         self.local_check(a)
-        globals.end_openram()
+        #globals.end_openram()
 
     def local_check(self, a):
         tempspice = OPTS.openram_temp + "temp.sp"
@@ -44,8 +44,8 @@ class array_test(unittest.TestCase):
         self.assertFalse(calibre.run_drc(a.name, tempgds))
         self.assertFalse(calibre.run_lvs(a.name, tempgds, tempspice))
 
-        os.remove(tempspice)
-        os.remove(tempgds)
+        #os.remove(tempspice)
+        #os.remove(tempgds)
 
 
 # instantiate a copy of the class to actually run the test

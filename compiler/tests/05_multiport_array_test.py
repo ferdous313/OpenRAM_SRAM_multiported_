@@ -22,6 +22,15 @@ class array_test(unittest.TestCase):
         globals.init_openram("config_20_{0}".format(OPTS.tech_name))
         # we will manually run lvs/drc
         OPTS.check_lvsdrc = False
+        import multiport
+        import tech
+
+        debug.info(2, "Checking multiport cell")
+        tx = multiport.multiport(name="a_multiport", nmos_width=2 * tech.drc["minwidth_tx"])
+        OPTS.check_lvsdrc = True
+        self.local_check(tx)
+
+
 
         import multiport_array
 

@@ -41,7 +41,7 @@ class sense_amp_test(unittest.TestCase):
         OPTS.check_lvsdrc = True
         self.local_check(a)
 
-        globals.end_openram()
+        #globals.end_openram()
         
     def local_check(self, a):
         tempspice = OPTS.openram_temp + "temp.sp"
@@ -53,8 +53,8 @@ class sense_amp_test(unittest.TestCase):
         self.assertFalse(calibre.run_drc(a.name, tempgds))
         self.assertFalse(calibre.run_lvs(a.name, tempgds, tempspice))
 
-        os.remove(tempspice)
-        os.remove(tempgds)
+        #os.remove(tempspice)
+        #os.remove(tempgds)
 
 # instantiate a copy of the class to actually run the test
 if __name__ == "__main__":

@@ -1,9 +1,6 @@
 #!/usr/bin/env python2.7
 """
-Run regresion tests on a Multiported sram cell. Here Read_only_ports and Read_write_ports are the configurable ports numbers.
-Running Command is:
-python2.7 04_multiport_test.py -t scn3me_subm
-python2.7 04_multiport_test.py
+Run a regresion test on a basic array
 """
 
 import unittest
@@ -13,39 +10,40 @@ sys.path.append(os.path.join(sys.path[0],".."))
 import globals
 import debug
 import calibre
-import sys
 
 OPTS = globals.OPTS
 
-#@unittest.skip("SKIPPING 04_nand_2_test")
+#@unittest.skip("SKIPPING 05_array_test")
 
 
-class multiport_test(unittest.TestCase):
+class multiport_arr_test(unittest.TestCase):
 
     def runTest(self):
         globals.init_openram("config_20_{0}".format(OPTS.tech_name))
         # we will manually run lvs/drc
         OPTS.check_lvsdrc = False
 
-        import multiport
+        import multiport_array
         import tech
 
-        debug.info(2, "Checking multiport cell")
-        tx = multiport.multiport(name="a_multiport",Read_Write_ports=4, Read_Only_ports=2,nmos_width=2 * tech.drc["minwidth_tx"])
-        OPTS.check_lvsdrc = True
-        self.local_check(tx)
-        #globals.end_openram()
-        
+        debug.info(2, "Testing 3x3 array for 6t_cell")
+        a = multiport_array.multiport_array(name="multiport_array",cols=2,rows=1)
 
-    def local_check(self, tx):
+        OPTS.check_lvsdrc = True
+
+        self.local_check(a)
+        #globals.end_openram()
+
+    def local_check(self, a):
         tempspice = OPTS.openram_temp + "temp.sp"
         tempgds = OPTS.openram_temp + "temp.gds"
+        temppdf = OPTS.openram_temp + "temp.pdf"
 
-        tx.sp_write(tempspice)
-        tx.gds_write(tempgds)
+        a.sp_write(tempspice)
+        a.gds_write(tempgds)
 
-        self.assertFalse(calibre.run_drc(tx.name, tempgds))
-        self.assertFalse(calibre.run_lvs(tx.name, tempgds, tempspice))
+        self.assertFalse(calibre.run_drc(a.name, tempgds))
+        self.assertFalse(calibre.run_lvs(a.name, tempgds, tempspice))
 
         #os.remove(tempspice)
         #os.remove(tempgds)

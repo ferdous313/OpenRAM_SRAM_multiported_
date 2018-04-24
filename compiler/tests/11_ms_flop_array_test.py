@@ -31,7 +31,7 @@ class dff_array_test(unittest.TestCase):
         OPTS.check_lvsdrc = True
         self.local_check(a)
 
-        globals.end_openram()
+        #globals.end_openram()
 
     def local_check(self, a):
         tempspice = OPTS.openram_temp + "temp.sp"
@@ -43,8 +43,8 @@ class dff_array_test(unittest.TestCase):
         self.assertFalse(calibre.run_drc(a.name, tempgds))
         self.assertFalse(calibre.run_lvs(a.name, tempgds, tempspice))
 
-        os.remove(tempspice)
-        os.remove(tempgds)
+        #os.remove(tempspice)
+        #os.remove(tempgds)
 
 
 # instantiate a copdsay of the class to actually run the test

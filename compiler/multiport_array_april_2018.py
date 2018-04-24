@@ -22,19 +22,38 @@ class multiport_array(design.design):
 
         self.column_size = cols
         self.row_size = rows
-        self.read_write_ports=1
-        self.read_only_ports=0
+        self.read_write_ports=2
+        self.read_only_ports=2
         self.add_pins()
         self.create_layout()
         self.add_labels()
         self.DRC_LVS()
 
     def add_pins(self):
-        #self.read_write_ports
-                    
-        self.add_pin("BL1[0]")
-        self.add_pin("BL_bar1[0]")
-        self.add_pin("WL1[0]")
+
+        for col in range(self.column_size):
+            self.add_pin("BL1[{0}]".format(col))
+            self.add_pin("BL_bar1[{0}]".format(col))
+            self.add_pin("BL2[{0}]".format(col))
+            self.add_pin("BL_bar2[{0}]".format(col))
+            self.add_pin("RBL1[{0}]".format(col))
+            self.add_pin("RBL_bar1[{0}]".format(col))
+            self.add_pin("RBL2[{0}]".format(col))
+            self.add_pin("RBL_bar2[{0}]".format(col))
+            #self.add_pin("RBL3[{0}]".format(col))
+            #self.add_pin("RBL_bar3[{0}]".format(col))
+            #self.add_pin("RBL4[{0}]".format(col))
+            #self.add_pin("RBL_bar4[{0}]".format(col))
+           
+        for row in range(self.row_size):
+            self.add_pin("R_Row1[{0}]".format(row))
+            self.add_pin("R_Row2[{0}]".format(row))            
+            #self.add_pin("R_Row3[{0}]".format(row))
+            #self.add_pin("R_Row4[{0}]".format(row))
+            self.add_pin("WL1[{0}]".format(row))
+            self.add_pin("WL2[{0}]".format(row))
+
+             
         self.add_pin("vdd")
         self.add_pin("gnd")
 
@@ -62,7 +81,7 @@ class multiport_array(design.design):
         for col in range(self.column_size):
             yoffset = 0.0
             for row in range(self.row_size):
-                name = "Lima_multiport_r{0}_c{1}: ".format(row, col)
+                name = "multiport_r{0}_c{1}: ".format(row, col)
 
                 if row % 2:
                     print(" Creating same side....Row :{0}".format(row))
@@ -86,30 +105,43 @@ class multiport_array(design.design):
                                       mod=self.cell,
                                       offset=[xoffset, tempy],
                                       mirror=dir_key)
-                        """self.connect_inst([ "RBL_bar1[{0}]".format(col),
-                                       "RBL1[{0}]".format(col),
+                        self.connect_inst([
+                                       "RBL_bar1[{0}]".format(col),                                                    "RBL1[{0}]".format(col),
                                        "BL2[{0}]".format(col),
                                        "BL1[{0}]".format(col),
                                        "BL_bar1[{0}]".format(col),
                                        "BL_bar2[{0}]".format(col),
                                        "RBL2[{0}]".format(col),
-                                       "RBL_bar2[{0}]".format(col),                                       
+                                       "RBL_bar2[{0}]".format(col),
+                                       "RBL4[{0}]".format(col),
+                                       "RBL_bar4[{0}]".format(col),
                                         "R_Row1[{0}]".format(row),
                                        "R_Row2[{0}]".format(row),
-                                       
+                                       "R_Row3[{0}]".format(row),                       
+                                       "R_Row4[{0}]".format(row),
                                         "WL1[{0}]".format(row),
                                        "WL2[{0}]".format(row),
                                         "vdd",
-                                        "gnd"])"""
+                                        "gnd"])
 
                 else:
                     self.add_inst(name=name,
                                   mod=self.cell,
                                   offset=[xoffset, tempy],
                                   mirror=dir_key)
-
-                   
-                    self.connect_inst(["BL1[{0}]".format(col),"BL_bar1[{0}]".format(col),"WL1[{0}]".format(row),"vdd", "gnd"])
+                    self.connect_inst(["RBL_bar1[{0}]".format(col),                                                    "RBL1[{0}]".format(col),
+                                       "BL2[{0}]".format(col),
+                                       "BL1[{0}]".format(col),
+                                       "BL_bar1[{0}]".format(col),
+                                       "BL_bar2[{0}]".format(col),
+                                       "RBL2[{0}]".format(col),
+                                       "RBL_bar2[{0}]".format(col),
+                                       "R_Row1[{0}]".format(row),
+                                       "R_Row2[{0}]".format(row),
+                                        "WL1[{0}]".format(row),
+                                       "WL2[{0}]".format(row),
+                                        "vdd",
+                                        "gnd"])
 
                     if row%2:
                         #current is :normal
@@ -118,12 +150,11 @@ class multiport_array(design.design):
                         #current is :rotated
                         #yoffset += 2.3*self.cell.height
                         yoffset += 2.5*self.cell.height+drc["minwidth_metal1"]*.5
-            #xoffset += 6.5*self.cell.width
-            xoffset += 2.8*self.cell.width
+            xoffset += 6.5*self.cell.width
+
     def add_labels(self):
         offset = vector(0.0, 0.0)
         offset_Q_Q_bar = vector(0.0, 0.0)
-        offset_net = vector(0.0, 0.0)
         extra=vector(drc["minwidth_metal1"],2*drc["minwidth_metal1"])
         #extra=offset
 
@@ -134,20 +165,20 @@ class multiport_array(design.design):
            self.add_label(text="Q_bar[{0}]".format(col),
                                        layer="metal1",
                                        offset= offset_Q_Q_bar + self.cell.Q_bar_positions[0])
-           offset_Q_Q_bar.x += 6*self.cell.width"""
+           offset_Q_Q_bar.x += 6.5*self.cell.width"""
 
 
 
 
         for col in range(self.column_size):
             offset.y = 0.0
-            """for no in range(self.read_only_ports):
+            for no in range(self.read_only_ports):
                 self.add_label(text="RBL_bar{0}[{1}]".format(no+1,col),
                            layer="metal2",
                                offset=offset + self.cell.RBL_bar_positions[no])
                 self.add_label(text="RBL{0}[{1}]".format(no+1,col),
                            layer="metal2",
-                               offset=offset + self.cell.RBL_positions[no])"""
+                               offset=offset + self.cell.RBL_positions[no])
 
             for no in range(self.read_write_ports):
                 self.add_label(text="BL{0}[{1}]".format(no+1,col),
@@ -186,13 +217,13 @@ class multiport_array(design.design):
                                    layer="metal1",
                                        offset=vector(vdd_offset.x-2.5*self.cell.height,vdd_offset.y-self.cell.height))
                         R_row1_offset =vector(gnd_offset.x-2.5*self.cell.height,gnd_offset.y-self.cell.height)
-                        """for no in range(self.read_only_ports):
+                        for no in range(self.read_only_ports):
                             R_row1_offset.y=R_row1_offset.y+2.3*drc["minwidth_metal1"]
                             self.add_label(text="R_Row{0}[{1}]".format(no+1,row),
                                        layer="metal1",
                                            offset=vector(R_row1_offset.x,R_row1_offset.y))
                             self.offset_R_row_final=vector(R_row1_offset.x,R_row1_offset.y)
-                        self.WL_offset=self.offset_R_row_final.y+self.cell.pmos1.height*2-drc["metal1_to_metal1"]"""
+                        self.WL_offset=self.offset_R_row_final.y+self.cell.pmos1.height*2-drc["metal1_to_metal1"]
                         for no in range(self.read_write_ports):  
                             self.add_label(text="WL{0}[{1}]".format(no+1,row),
                                            layer="metal1",
@@ -207,18 +238,18 @@ class multiport_array(design.design):
                         # add vdd label and offset
                         self.add_label(text="gnd",
                                    layer="metal1",
-                                       offset=vector(gnd_offset.x+7.6*drc["minwidth_metal1"],gnd_offset.y))
+                                   offset=vector(gnd_offset.x,gnd_offset.y))
                         self.gnd_positions.append(gnd_offset)
                         vdd_offset = offset+self.cell.vdd_position_extended
                         self.add_label(text="vdd",
                                    layer="metal1",
-                                       offset=vector(vdd_offset.x+7.6*drc["minwidth_metal1"],vdd_offset.y-drc["minwidth_metal1"]))
-                        R_row1_offset =vector(gnd_offset.x-.5*drc["minwidth_metal1"],gnd_offset.y)
-                        """for no in range(self.read_only_ports):
+                                       offset=vector(vdd_offset.x,vdd_offset.y))
+                        R_row1_offset =vector(gnd_offset.x-18*drc["metal1_to_metal1"],gnd_offset.y) 
+                        for no in range(self.read_only_ports):
                             gnd_offset.y=gnd_offset.y-2.3*drc["minwidth_metal1"]
                             self.add_label(text="R_Row{0}[{1}]".format(no+1,row),
                                        layer="metal1",
-                                       offset=vector(R_row1_offset.x,gnd_offset.y))"""
+                                       offset=vector(R_row1_offset.x,gnd_offset.y))
                         for no in range(self.read_write_ports):  
                             self.add_label(text="WL{0}[{1}]".format(no+1,col),
                                            layer="metal1",
@@ -226,13 +257,13 @@ class multiport_array(design.design):
 
                        
 
-                        """for col in range(self.column_size): 
+                        """#for col in range(self.column_size): 
                             
-                            for no in range(self.read_only_ports): 
+                        for no in range(self.read_only_ports): 
                                 self.add_label(text="net{0}[{1}]".format(no+1,row),
                                        layer="metal1",
                                        offset= offset_net + self.cell.NET_positions[no]) 
-                        offset_net.x += 6*self.cell.width"""
+                            offset_net.x += 6.5*self.cell.width"""  
 
 
 
@@ -251,7 +282,7 @@ class multiport_array(design.design):
                         #yoffset += 2.3*self.cell.height
                         offset.y += 2.5*self.cell.height+drc["minwidth_metal1"]*.5
             # increments to the next column width            
-            offset.x += 2.81*self.cell.width
+            offset.x += 6.5*self.cell.width
            
     def delay(self, slope, load=0):
         from tech import drc
