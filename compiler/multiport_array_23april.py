@@ -6,6 +6,8 @@ from vector import vector
 from globals import OPTS
 from multiport import multiport
 
+
+
 class multiport_array(design.design):
     """
     Creates a rows x cols array of memory cells. Assumes bit-lines
@@ -13,15 +15,15 @@ class multiport_array(design.design):
     Connects the word lines and bit lines.
     """
 
-    def __init__(self, name,Read_Write_ports, Read_Only_ports, cols, rows):
+    def __init__(self, name, cols, rows):
         design.design.__init__(self, name)
         debug.info(1, "Creating {0} {1} x {2}".format(self.name, rows, cols))
 
 
         self.column_size = cols
         self.row_size = rows
-        self.read_write_ports=Read_Write_ports
-        self.read_only_ports=Read_Only_ports
+        self.read_write_ports=1
+        self.read_only_ports=0
         self.add_pins()
         self.create_layout()
         self.add_labels()
@@ -52,7 +54,7 @@ class multiport_array(design.design):
         self.width = self.column_size * self.cell.width
 
     def create_cell(self):
-        self.cell = multiport(name="multiport",nmos_width=2 * tech.drc["minwidth_tx"],Read_Write_ports=1, Read_Only_ports= 0)
+        self.cell = multiport(name="multiport", nmos_width=2 * tech.drc["minwidth_tx"])
         self.add_mod(self.cell)
 
     def add_cells(self):
@@ -84,7 +86,22 @@ class multiport_array(design.design):
                                       mod=self.cell,
                                       offset=[xoffset, tempy],
                                       mirror=dir_key)
-                      self.connect_inst(["BL1[{0}]".format(col),"BL_bar1[{0}]".format(col),"WL1[{0}]".format(row),"vdd", "gnd"])
+                        """self.connect_inst([ "RBL_bar1[{0}]".format(col),
+                                       "RBL1[{0}]".format(col),
+                                       "BL2[{0}]".format(col),
+                                       "BL1[{0}]".format(col),
+                                       "BL_bar1[{0}]".format(col),
+                                       "BL_bar2[{0}]".format(col),
+                                       "RBL2[{0}]".format(col),
+                                       "RBL_bar2[{0}]".format(col),                                       
+                                        "R_Row1[{0}]".format(row),
+                                       "R_Row2[{0}]".format(row),
+                                       
+                                        "WL1[{0}]".format(row),
+                                       "WL2[{0}]".format(row),
+                                        "vdd",
+                                        "gnd"])"""
+
                 else:
                     self.add_inst(name=name,
                                   mod=self.cell,

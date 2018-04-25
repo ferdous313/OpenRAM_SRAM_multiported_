@@ -25,17 +25,17 @@ class array_test(unittest.TestCase):
         import multiport
         import tech
 
-        debug.info(2, "Checking multiport cell")
-        tx = multiport.multiport(name="a_multiport", nmos_width=2 * tech.drc["minwidth_tx"])
+        """debug.info(2, "Checking multiport cell")
+        tx = multiport.multiport(name="a_multiport",Read_Write_ports=4, Read_Only_ports=2, nmos_width=2 * tech.drc["minwidth_tx"])
         OPTS.check_lvsdrc = True
-        self.local_check(tx)
+        self.local_check(tx)"""
 
 
 
         import multiport_array
 
         debug.info(2, "Testing 3x3 array for multiport cell")
-        a = multiport_array.multiport_array(name="multiport_array", cols=3, rows=3)
+        a = multiport_array.multiport_array(name="multiport_array", Read_Write_ports=1, Read_Only_ports=0,cols=1, rows=1)
 
         OPTS.check_lvsdrc = True
 
