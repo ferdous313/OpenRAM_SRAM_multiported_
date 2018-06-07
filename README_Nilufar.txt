@@ -1,11 +1,18 @@
-README
+.ultiPorted SRAM:
 
-1. I coded for the dual ported SRAM cell in the file named OpenRAM/compiler/cell_8T.py
- 
-2. The Unit test is in the file located in OpenRAM/compiler/_04_cell_8T_test.py
+The multiported sram is coded in OpenRAM/compiler/multiport.py
 
-3. The code generates the layout and passes the LVS test for freepdk45 technology. 
-   I redesigned the positions of the transistors as it was giving short circuit errors for the LVS test.
-    
- 
+ 1.The multiported sram is coded in OpenRAM/compiler/multiport.py
 
+ 2. The test is coded in OpenRAM/tests/ 04_multiport_test.py and can be executed using the command:
+    python2.7 04_multiport_test.py 
+    python2.7 04_multiport_test.py -t scn3me_subm
+
+ 3. The Read_Write ports and Read_Only_ports are reconfigurable in the 
+OpenRAM/tests/ 04_multiport_test.py script as,
+
+tx = multiport.multiport(name="a_multiport",Read_Write_ports=4, Read_Only_ports=2,nmos_width=2 * tech.drc["minwidth_tx"]
+
+ 4. Wide range of variation and combinations of Read_Write_ports and Read_Only_ports are working in this program,
+
+ 5. Yet now,  the array of the cells is not completed. However, I tried it in the  multiport_array.py

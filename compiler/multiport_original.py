@@ -18,10 +18,10 @@ class multiport(design.design):
    
     chars=["BL","WL"]
     def __init__(self, name,Read_Write_ports,Read_Only_ports, nmos_width=1,height=bitcell.chars["height"]):
-   
+    #def __init__(self, name, nmos_width=1, height=multiport.chars["height"]):
         """ Constructor """
         design.design.__init__(self, name)
-        debug.info(2, "create multiport strcuture {0} with size of {1}".format(
+        debug.info(2, "create nand_2 strcuture {0} with size of {1}".format(
             name, nmos_width))
 
         self.nmos_width = nmos_width
@@ -61,28 +61,29 @@ class multiport(design.design):
         self.create_ptx()
         self.setup_layout_constants()
         self.add_rails()
-        self.add_ptx()
-        self.constant_for_lenght()
-        self.add_and_create_down_ptx()
-       
+        self.add_ptx_lima()
+        self.constant_for_lenght_lima()
+        self.add_and_create_down_ptx_lima()
+        #self.Side_PTX_add_and_create_side_ptx_lima()
         self.add_well_contacts()
 
         # This isn't instantiated, but we use it to get the dimensions
         self.poly_contact = contact.contact(("poly", "contact", "metal1"))
 
         #self.connect_well_contacts_lima()
-        self.connect_rails()
-        self.connect_well_contacts()
+        self.connect_rails_lima()
+        self.connect_well_contacts_lima()
         self.connect_tx()
-        self.route_pins()
+        self.route_pins_lima()
        
-        self.Side_PTX_add_and_create_side_ptx()
-        self.extend_wells()
+        self.Side_PTX_add_and_create_side_ptx_lima()
+        self.extend_wells_lima()
         self.extend_active()
+        #limaself.setup_layout_offsets()
+        #self.add_metal3_via_lima()
+        self.extend_rails_lima()
        
-        self.extend_rails()
-       
-        self.extend_Q_and_Q_bar()
+        self.extend_Q_and_Q_bar_lima()
     # Determine transistor size
     def determine_sizes(self):
         """ Determine the size of the transistors """
@@ -127,12 +128,71 @@ class multiport(design.design):
         self.rail_height = rail_height
         # Relocate the origin
         self.gnd_position = vector(0, - 19*drc["metal1_to_metal1"])
-        
+        """self.add_rect(layer="metal1",
+                      offset=self.gnd_position,
+                      width=rail_width,
+                      height=rail_height)
+        self.add_label(text="gnd",
+                       layer="metal1",
+                       offset=self.gnd_position)"""
 
         self.vdd_position = vector(0, self.height*1.3 )
-        
+        """self.add_rect(layer="metal1", 
+                      offset=self.vdd_position,
+                      width=rail_width,
+                      height=rail_height)
+        self.add_label(text="vdd",
+                       layer="metal1", 
+                       offset=self.vdd_position)"""
 
-   
+    def add_ptx(self):
+        """  transistors are added and placed inside the layout         """
+
+        # determines the spacing between the edge and nmos (rail to active
+        # metal or poly_to_poly spacing)
+        edge_to_nmos = max(drc["metal1_to_metal1"]
+                            - self.nmos1.active_contact_positions[0].y,
+                           0.5 * (drc["poly_to_poly"] - drc["minwidth_metal1"])
+                             - self.nmos1.poly_positions[0].y)
+
+        # determine the position of the first transistor from the left
+        self.nmos_position1 = vector(0, 0.5 * drc["minwidth_metal1"] + edge_to_nmos)
+        offset = self.nmos_position1+ vector(0,self.nmos1.height)
+        self.add_inst(name="nmos1",
+                      mod=self.nmos1,
+                      offset=offset,
+                      mirror="MX")
+        self.connect_inst(["Z", "A", "net1", "gnd"])
+
+        self.nmos_position2 = vector(self.nmos2.active_width - self.nmos2.active_contact.width, 
+                                     self.nmos_position1.y)
+        offset = self.nmos_position2 + vector(0,self.nmos2.height)
+        self.add_inst(name="nmos2",
+                      mod=self.nmos2,
+                      offset=offset,
+                      mirror="MX")
+        self.connect_inst(["net1", "B", "gnd", "gnd"])
+
+        # determines the spacing between the edge and pmos
+        edge_to_pmos = max(drc["metal1_to_metal1"] \
+                               - self.pmos1.active_contact_positions[0].y,
+                           0.5 * drc["poly_to_poly"] - 0.5 * drc["minwidth_metal1"] \
+                               - self.pmos1.poly_positions[0].y)
+
+        """self.pmos_position1 = vector(0, self.height - 0.5 * drc["minwidth_metal1"]""" 
+        self.pmos_position1 = vector(0, self.height - 0.5 * drc["minwidth_metal1"] 
+                                         - edge_to_pmos)                             
+        
+        self.add_inst(name="pmos1",
+                      mod=self.pmos1,
+                      offset=self.pmos_position1)
+        self.connect_inst(["vdd", "A", "Z", "vdd"])
+
+        self.pmos_position2 = vector(self.nmos_position2.x, self.pmos_position1.y)
+        self.add_inst(name="pmos2",
+                      mod=self.pmos2,
+                      offset=self.pmos_position2)
+        self.connect_inst(["Z", "B", "vdd", "vdd"])
 
     def add_well_contacts(self):
         """  Create and add well copntacts """
@@ -154,14 +214,55 @@ class multiport(design.design):
         offset = self.pwell_contact_position = vector(xoffset, yoffset)
         self.nwell_contact=self.add_contact(layer_stack,offset,(1,self.pmos1.num_of_tacts))
 
-    
+    def connect_well_contacts(self):
+        """  Connect well contacts to vdd and gnd rail """
+        well_tap_length = (self.vdd_position.y - self.nwell_contact_position.y)
+        offset = vector(self.nwell_contact_position.x 
+                        + self.nwell_contact.second_layer_position.x 
+                        - self.nwell_contact.first_layer_position.x,
+                        self.nwell_contact_position.y)
+        self.add_rect(layer="metal1",
+                      offset=offset,
+                      width=drc["minwidth_metal1"],
+                      height=well_tap_length)
+        correct = vector(self.nmos2.active_contact.width - drc["minwidth_metal1"],
+                         0).scale(.5,0)
+        #well_tap_length = self.nmos1.active_height+self.gnd_position.y
+        poffset = self.nmos_position2 + self.nmos2.active_contact_positions[0] + correct
+        """offset = (self.pwell_contact_position.scale(1,1) 
+                        + self.pwell_contact.second_layer_position.scale(1,0) 
+                        - self.pwell_contact.first_layer_position.scale(1,0))"""
+        temp_height = self.height - poffset.y                
+        self.add_rect(layer="metal1",
+                      #offset=offset,
+                      offset=poffset.scale(1,0),
+                      width=drc["minwidth_metal1"],
+                      height=temp_height)
 
-   
+    def connect_rails(self):
+        well_tap_length = (self.height - self.nwell_contact_position.y)
+        offset = vector(self.nwell_contact_position.x 
+                        + self.nwell_contact.second_layer_position.x 
+                        - self.nwell_contact.first_layer_position.x+drc["minwidth_metal1"],
+                        self.nwell_contact_position.y)
+        self.add_rect(layer="metal1",
+                      offset=offset,
+                      width=drc["minwidth_metal1"],
+                      height=well_tap_length)
+
+        well_tap_length = self.nmos1.active_height
+        offset = (self.pwell_contact_position.scale(1.05,-.11) 
+                        + self.pwell_contact.second_layer_position.scale(1.05,-.11) 
+                        - self.pwell_contact.first_layer_position.scale(1.05,-.11)) 
+        self.add_rect(layer="metal1",
+                      offset=offset, width=drc["minwidth_metal1"],
+                      height=well_tap_length+drc["minwidth_metal1"])
+
 
     def connect_tx(self):
         """ Connect tx poly znd drains """
         self.connect_poly()
-        self.connect_drains_working()
+        self.connect_drains_lima_working()
 
     def connect_poly(self):
         """ poly connection """
@@ -204,18 +305,45 @@ class multiport(design.design):
 
             self.add_path("metal1",[start, mid1, mid2, end])
 
-    def route_pins(self):
+    def route_pins_lima(self):
         """ Routing """
         self.route_input_gate()
        
 
     def route_input_gate(self):
         """ Gate routing """
-        self.route_input_gate_A_Q()
-        self.route_input_gate_B_Q_bar()
+        self.route_input_gate_A_Q_lima()
+        self.route_input_gate_B_Q_bar_lima()
 
 
-   
+    def extend_wells(self):
+        """ Extension of well """
+        middle_point = (self.nmos_position1.y + self.nmos1.pwell_position.y
+                           + self.nmos1.well_height
+                           + (self.pmos_position1.y + self.pmos1.nwell_position.y
+                               - self.nmos_position1.y - self.nmos1.pwell_position.y
+                               - self.nmos1.well_height) / 2)
+        offset = self.nwell_position = vector(0, middle_point)
+        self.nwell_height = self.height - middle_point
+        self.add_rect(layer="nwell",
+                      offset=offset,
+                      width=self.well_width   ,                          
+                      height=self.nwell_height)
+        self.add_rect(layer="vtg",
+                      offset=offset,
+                      width=self.well_width    ,                        
+                      height=self.nwell_height)
+
+        offset = self.pwell_position = vector(0, 0)
+        self.pwell_height = middle_point
+        self.add_rect(layer="pwell",
+                      offset=offset,
+                      width=self.well_width,                             
+                      height=self.pwell_height)
+        self.add_rect(layer="vtg",
+                      offset=offset,
+                      width=self.well_width,                             
+                      height=self.pwell_height)
 
     def extend_active(self):
         """ Extension of active region """
@@ -253,10 +381,10 @@ class multiport(design.design):
                       height=self.nmos1.active_height)
 
     def setup_layout_offsets(self):
-        """ Defining the position of i/o pins """
-        #self.A_position = self.A_position = self.input_position1
-        #self.B_position = self.B_position = self.input_position2
-        #self.Z_position = self.Z_position = self.output_position
+        """ Defining the position of i/o pins for the two input nand gate """
+        self.A_position = self.A_position = self.input_position1
+        self.B_position = self.B_position = self.input_position2
+        self.Z_position = self.Z_position = self.output_position
         self.vdd_position = self.vdd_position
         self.gnd_position = self.gnd_position
 
@@ -269,7 +397,7 @@ class multiport(design.design):
         c_para = spice["min_tx_c_para"]*(self.nmos_size/parameter["min_tx_size"])#ff
         return self.cal_delay_with_rc(r = r, c =  c_para+load, slope =slope)
 
-    def connect_drains_working(self):
+    def connect_drains_lima_working(self):
        
         
         """pmos1 and nmos1 drain connected"""
@@ -291,7 +419,10 @@ class multiport(design.design):
 
 
        
-       
+        """layer_stack_via1 = ["metal1", "via1", "metal2"]   
+        self.add_via(layer_stack_via1,via_offset)
+        layer_stack_via2 = ["metal2", "via2", "metal3"] 
+        self.add_via(layer_stack_via2,via_offset)"""
 
 
         """pmos2 and nmos2 drain connected"""
@@ -311,19 +442,32 @@ class multiport(design.design):
 
 
 
-    def connect_rails(self):
+       
+        """layer_stack_via1 = ["metal1", "via1", "metal2"]   
+        self.add_via(layer_stack_via1,via_offset)
+        layer_stack_via2 = ["metal2", "via2", "metal3"] 
+        self.add_via(layer_stack_via2,via_offset)"""
+
+
+
+
+    def connect_rails_lima(self):
         """  Connect transistor pmos drains to vdd and nmos drains to gnd rail """
         correct = vector(self.pmos1.active_contact.width ,
                          0).scale(.5,0)
         poffset = self.pmos_position1 + self.pmos1.active_contact_positions[1] + correct
         temp_height = self.height - poffset.y
-       
+        """self.add_rect(layer="metal1",
+                      offset=poffset, width=drc["minwidth_metal1"],
+                      height=temp_height)"""
 
         poffset = vector(2 * self.pmos_position2.x + correct.x
                          + self.pmos2.active_contact_positions[1].x , poffset.y-3*drc["minwidth_metal1"])
        
         pos1=vector(poffset.x,self.vdd_position.y)
+        #pos1=vector(poffset.x,self.vdd_position.y)
         
+        #self.add_path("metal1", [poffset,pos1])
 
         poffset = self.gnd_height_origin=self.nmos_position1 + self.nmos1.active_contact_positions[1] 
         temp_height=self.gnd_height=self.gnd_position.y - self.nmos1.active_contact_positions[1].y-self.nmos_position1.y-drc["minwidth_metal1"]
@@ -334,9 +478,10 @@ class multiport(design.design):
 
        
 
-    def route_input_gate_A_Q(self):
+    def route_input_gate_A_Q_lima(self):
         """ routing for input A """
         correct=drc["metal1_to_metal1"]+drc["minwidth_metal1"]
+        #xoffset = self.pmos1.poly_positions[0].x+ drc["metal1_to_metal1"] 
         xoffset=self.drain1_position_x+correct
         yoffset = (self.height 
                        - (drc["minwidth_metal1"] 
@@ -358,7 +503,13 @@ class multiport(design.design):
         offset =[xoffset, yoffset]
        
 
-       
+        """self.add_rect(layer="poly",
+                      offset=[xoffset-drc["minwidth_metal1"], yoffset-drc["minwidth_metal1"]],
+                      width=drc["minwidth_metal1"],
+                      height=drc["minwidth_metal1"]*2)"""
+        #start=vector(xoffset-drc["minwidth_metal1"], yoffset-.7*drc["minwidth_metal1"])
+        #end=vector(xoffset+drc["minwidth_metal1"], yoffset-.7*drc["minwidth_metal1"])
+        #self.add_path("poly",[start, end])
         self.contact_Q_position=vector(xoffset-.7*drc["minwidth_metal1"], yoffset-drc["minwidth_metal1"]+drc["metal3_to_metal3"]*3)     
         
         self.add_contact(layers=("poly", "contact", "metal1"),
@@ -389,9 +540,12 @@ class multiport(design.design):
                       width=input_length+2*drc["minwidth_metal1"],
                       height=drc["minwidth_metal1"])
         self.position_Q_array=self.contact_Q_position
-       
+        """Q added to text 
+        self.add_label(text="Q",
+                       layer="metal1",
+                       offset=self.contact_Q_position)"""
         self.Q_positions.append( self.position_Q_array)
-    def route_input_gate_B_Q_bar(self):
+    def route_input_gate_B_Q_bar_lima(self):
         """ routing for input B """
         xoffset = (self.pmos2.poly_positions[0].x
                        + self.pmos_position2.x + .8*drc["minwidth_poly"])
@@ -407,7 +561,17 @@ class multiport(design.design):
         offset = [xoffset, yoffset]
         offset=vector(xoffset, yoffset-drc["minwidth_metal1"])
         offset_Q_bar=self.contact_Q_bar_position=vector(xoffset, yoffset)
-       
+        """self.add_contact(layers=("poly", "contact", "metal1"),
+                         offset=offset,
+                         size=(1,1),
+                         rotate=90)
+         
+        via_offset = vector(offset_Q_bar.x,offset.y)
+        layer_stack_via1 = ["metal1", "via1", "metal2"]   
+        self.add_via(layer_stack_via1,via_offset,rotate=90)
+        layer_stack_via2 = ["metal2", "via2", "metal3"] 
+        self.add_via(layer_stack_via2,via_offset,rotate=90)"""
+
 
 
         self.Q_bar_contact_position=vector(xoffset, yoffset)       
@@ -424,7 +588,10 @@ class multiport(design.design):
                       width=input_length,
                       height=drc["minwidth_metal1"])
         self.position_Q_bar_array=self.input_position2.scale(.5,1)   
-       
+        """ Q_bar added to text
+        self.add_label(text="Q_bar",
+                       layer="metal1",
+                       offset=self.input_position2.scale(.5,1))"""
 
         self.Q_bar_positions.append( self.position_Q_bar_array)
         self.input_Q_bar=vector(self.input_position2.x+drc["minwidth_metal1"]*.5,self.input_position2.y)
@@ -450,7 +617,7 @@ class multiport(design.design):
 
 
 
-    def add_ptx(self):
+    def add_ptx_lima(self):
         """  transistors are added and placed inside the layout         """
 
         # determines the spacing between the edge and nmos (rail to active
@@ -490,9 +657,9 @@ class multiport(design.design):
         self.add_inst(name="pmos1",
                       mod=self.pmos1,
                       offset=self.pmos_position1)
-       
+        #self.connect_inst(["vdd", "Q", "Q_bar", "vdd"])
         self.connect_inst(["vdd", "Q", "Q_bar", "vdd"])
-       
+        #self.connect_inst(["Q_bar","Q","vdd","vdd"])
         self.pmos_position2 = vector(self.nmos_position2.x, self.pmos_position1.y)
         self.add_inst(name="pmos2",
                       mod=self.pmos2,
@@ -500,7 +667,7 @@ class multiport(design.design):
         self.connect_inst(["vdd","Q_bar", "Q","vdd"])
     
     
-    def connect_well_contacts(self):
+    def connect_well_contacts_lima(self):
         """  Connect well contacts to vdd and gnd rail """
         well_tap_length = (self.vdd_position.y - self.nwell_contact_position.y)
         offset = vector(self.nwell_contact_position.x 
@@ -526,9 +693,35 @@ class multiport(design.design):
    
 
 
-   
+    def add_metal3_via_lima(self):
+        "nmos1 via1 and via2 added"
+        yoffset = self.nmos_position1.y
+        via_offset=self.via_position_drain_left_inverter=self.via1_position=vector(self.nmos1.active_contact_positions[0].x  
+                                                + self.nmos_position1.x 
+                                                + self.nmos1.active_contact.first_layer_position.x 
+                                                + self.nmos1.active_contact.width / 2
+                                                - .5 * drc["minwidth_metal1"],
+                                                 yoffset+drc["metal1_to_metal1"]+ drc["minwidth_metal1"])
 
-    def constant_for_lenght(self):
+
+
+       
+        layer_stack_via1 = ["metal1", "via1", "metal2"]   
+        self.add_via(layer_stack_via1,via_offset)
+        layer_stack_via2 = ["metal2", "via2", "metal3"] 
+        self.add_via(layer_stack_via2,via_offset)
+
+        
+        "nmos2 via1 and via2 added"
+
+        yoffset = self.nmos_position2.y
+        via_offset=self.via_position_drain_right_inverter= vector(self.nmos2_drain_position.x - .7 * drc["minwidth_metal1"],self.via1_position.y)
+        layer_stack_via1 = ["metal1", "via1", "metal2"]   
+        self.add_via(layer_stack_via1,via_offset)
+        layer_stack_via2 = ["metal2", "via2", "metal3"] 
+        self.add_via(layer_stack_via2,via_offset)
+
+    def constant_for_lenght_lima(self):
 
        self.left_end_figure_x= -self.down_ptx_no*self.nmos1.width-self.no_read_only_port*self.nmos1.width
        self.right_end_figure_x= self.down_ptx_no*self.nmos1.width+self.no_read_only_port*self.nmos1.width+self.nmos1.width
@@ -536,7 +729,7 @@ class multiport(design.design):
        #self.no_read_only_port=6
        self.width_figure=self.right_end_figure_x-self.left_end_figure_x
 
-    def add_and_create_down_ptx(self):
+    def add_and_create_down_ptx_lima(self):
         self.WL_positions=[]
         self.BL_positions=[]
         self.BL_bar_positions=[]
@@ -556,7 +749,7 @@ class multiport(design.design):
         i=0
        
         # determine y offset for the first down nmos 
-      
+        #TODO 
         yoffset=self.gnd_position.y
         while (i<=count_read_port):
             #print i
@@ -620,9 +813,10 @@ class multiport(design.design):
                           mod=self.nmos_ptx,
                           offset= self.nmos3_position,
                           mirror="MX")
-           
+            #self.connect_inst([ "Q_bar","WL{0}".format(i), "BL{0}".format(i),"gnd"])
             self.connect_inst([ "BL{0}".format(i),"WL{0}".format(i), "Q_bar","gnd"])
-           
+            #print("Lines Creating BL and WL****************************")
+            #print("WL{0} and BL{0}".format(i,i))
             self.nmos_down_names.append(self.nmos_ptx)
 
             if(i%2!=0):
@@ -631,7 +825,7 @@ class multiport(design.design):
                  self.add_rect(layer="metal2",
                                offset=[xoffset_BL_odd,viaoffset_y-(self.down_ptx_no+3)*drc["metal1_to_metal1"]-self.height],
                                width=drc["minwidth_metal2"],
-                              
+                               #height=self.height*(self.down_ptx_no+1)*.5
                                height= self.height*6 )
                  offset_BL=vector(xoffset_BL_odd,viaoffset_y-(self.down_ptx_no+3)*drc["metal1_to_metal1"]-self.height)
                  self.add_label(text="BL{0}".format(i),
@@ -674,7 +868,7 @@ class multiport(design.design):
             poly_length = poly_length +3*drc["metal1_to_metal1"]
 
             #poly_length= abs(yoffset_poly)+abs(self.nmos_ptx.poly_positions[0].y)
-           
+            """poly_length=drc["metal1_to_metal1"]*i*2+"""
            
             offset = vector (xoffset_poly,yoffset_poly )
             self.add_rect(layer="poly",
@@ -748,7 +942,8 @@ class multiport(design.design):
                           offset= self.nmos3_position,
                           mirror="MX")
             self.connect_inst(["BL_bar{0}".format(j),"WL{0}".format(j), "Q","gnd"])
-           
+            #print("Printing Lines**************")
+	    #print("WL{0} and BL_bar{0}".format(i,i))
             self.nmos_down_names.append(self.nmos_ptx)
 
             self.nmos_down_names.append(self.nmos_ptx)
@@ -759,7 +954,7 @@ class multiport(design.design):
                 self.add_rect(layer="metal2",
                                offset=[xoffset_BL_odd,viaoffset_y-self.height-(self.down_ptx_no+3)*drc["metal1_to_metal1"]],
                                width=drc["minwidth_metal2"],
-                             
+                               #height=self.height*(self.down_ptx_no+1)*.5
                                height= self.height*6             )
                 self.add_label(text="BL_bar{0}".format(j),
                               layer="metal2",
@@ -776,7 +971,7 @@ class multiport(design.design):
                 self.add_rect(layer="metal2",
                                offset=[xoffset_BL_even,viaoffset_y-self.height-(self.down_ptx_no+3)*drc["metal1_to_metal1"]],
                                width=drc["minwidth_metal2"],
-                              
+                               #height=self.height*(self.down_ptx_no+1)*.5
                                height=self.height*6 )
                 self.add_label(text="BL_bar{0}".format(j),
                               layer="metal2",
@@ -815,14 +1010,15 @@ class multiport(design.design):
 
             
             " Word Line added to the left  "
-        
+            #start = offset_contact_bar
+            #start=self.wordline_left=vector(-self.nmos1.width*self.down_ptx_no*1.5,offset_contact_bar.y)
             start=self.wordline_left=vector(self.left_end_figure_x,offset_contact_bar.y)
 
-           
+            #offset_label=self.wordline_right=vector(self.end_of_ptx_position_left.x+drc["minwidth_metal1"], offset_contact_bar.y)
             offset_label=self.wordline_right=vector(start.x, offset_contact_bar.y)
-          
+            #end =  vector(self.nmos1.width*self.down_ptx_no*1.5+1+2*drc["minwidth_metal1"], offset_contact_bar.y)
             end =  vector(self.right_end_figure_x+self.nmos1.width*3+self.no_read_only_port*self.nmos1.width,offset_contact_bar.y)
-           
+            #gnd_width = self.end_of_ptx_position_right.x-self.end_of_ptx_position_left.x+ self.down_ptx_no*.5*self.nmos1.width
             self.add_path("metal1",[start, end])
             offset=end
 
@@ -908,14 +1104,15 @@ class multiport(design.design):
         end = vector(self.source_line_right_start.x, self.source_line_right_start.y)
         self.add_path("metal3",[start, end])
 
-    def Side_PTX_add_and_create_side_ptx(self):
+    def Side_PTX_add_and_create_side_ptx_lima(self):
        
         self.initial_cross_nmos_no=2
         self.side_ptx_start_no=self.initial_cross_nmos_no+self.down_ptx_no
         self.RBL_positions=[]
         self.RBL_bar_positions=[]
         self.NET_positions=[]
-      
+        #self.RBL_positions_right=[]
+        #self.RBL_bar_positions_right=[]
         self.nmos_side_ptx_names=[]
         for i in range (self.side_ptx_start_no+1,self.side_ptx_start_no+1+self.down_ptx_no):
             name= "nmos{0}".format(i)
@@ -950,10 +1147,11 @@ class multiport(design.design):
         R_Row_ptx_start_left=self.end_of_ptx_position_left.x
         R_Row_y=self.gnd_position.y-2.3*drc["metal1_to_metal1"]
         R_Row_y_bar=R_Row_y-2.3*drc["metal1_to_metal1"]
-       
+        #xoffset_side_left=self.nmos_position1.x-2*self.nmos1.width
+        #yoffset_side_left=self.vdd_position.y+3.1*self.nmos1.height
         yoffset_side_left=self.gnd_position.y+3.3*self.nmos1.height
         yoffset_side_right=self.gnd_position.y+3.3*self.nmos1.height
-       
+        #viaoffset_side_left_y=  self.nmos3_position.y-2*self.nmos1.height+drc["well_enclosure_active"]
         viaoffset_side_left_y=yoffset_side_left
         viaoffset_side_right_y=yoffset_side_right
         i=1
@@ -976,8 +1174,12 @@ class multiport(design.design):
                           offset= self.nmos_left_side_position,
                           mirror="MX")
                 self.connect_inst([ "RBL{0}".format(i),"Q", "net{0}".format(i),"gnd"])
-               
+                #self.connect_inst([ "net{0}".format(i), "RBL{0}".format(i),"Q","gnd"])
+                #print("Lines Creating RBL ****************************")
+                #print("RBL{0}".format(i))
+                #extend poly to Q
 
+                #limajan2018
                 poly_position_side_ptx=xoffset_side_left+self.nmos_ptx.poly_positions[0].x
               
                 height=self.contact_Q_position.y-self.nmos_left_side_position.y+drc["minwidth_poly"]+drc["minwidth_metal3"]
@@ -987,7 +1189,7 @@ class multiport(design.design):
                                height=height+3*drc["minwidth_poly"])     
                 
                 self.add_contact (layers=("poly", "contact", "metal1"),
-                                 
+                                  #offset=vector(poly_position_side_ptx,self.input_position_Q.y+drc["minwidth_metal1"]),
                                   offset=vector(poly_position_side_ptx+drc["minwidth_metal3"]*.5,self.contact_Q_position.y),
                                   size=(1,1),
                                   rotate=90)
@@ -1086,9 +1288,9 @@ class multiport(design.design):
             
 
                 R_Row_ptx_origin=self.nmos_left_side_position.x
-               
+                #R_Row_ptx_origin_left= R_Row_ptx_start_left-drc["minwidth_metal1"]
                 xoffset_side_left= self.nmos_left_side_position_bar.x-self.nmos1.width
-               
+                #R_Row_ptx_start_left = self.nmos_left_side_position_bar.x-self.nmos1.width
                 """creating ptx connecting to gnd"""
                 name_nmos = "nmos{0}".format(i+self.side_ptx_start_no+2)
                 #print(" Creating R-Row Ptx "+ name_nmos)
@@ -1096,13 +1298,13 @@ class multiport(design.design):
                            mults=self.tx_mults,
                              tx_type= "nmos")
                 self.add_mod (self.nmos_R_Row_ptx)    
-                      
+                #offset=vector(R_Row_ptx_origin + self.nmos_ptx.active_contact_positions[0].x,  self.nmos_left_side_position_bar.y-self.nmos1.width-drc["minwidth_metal1"])         
                 offset=vector(R_Row_ptx_origin,self.nmos_left_side_position_bar.y-self.nmos1.width-drc["minwidth_metal1"])
                 self.add_inst(name=name_nmos,
                           mod=self.nmos_R_Row_ptx,
                           offset= offset,
                           mirror="MX")
-               
+                #self.connect_inst([ "net{0}".format(i),"R_Row{0}".format(i),"gnd","gnd"])
                 self.connect_inst([ "gnd","R_Row{0}".format(i),"net{0}".format(i),"gnd"])
                 self.R_Row_position=offset
                 #Connect Source of R-Row ptx to gnd  
@@ -1125,8 +1327,12 @@ class multiport(design.design):
 
                
                 poly_position_R_Row_ptx=R_Row_ptx_origin+self.nmos_R_Row_ptx.poly_positions[0].x
-                
+                """self.add_rect(layer="metal3",
+                      offset= vector(poly_position_R_Row_ptx,self.nmos_R_Row_ptx.poly_positions[0].y),
+		      width=drc["minwidth_metal3"],                        
+                      height= drc["minwidth_metal3"])"""
                
+                #height=self.nmos_R_Row_ptx.poly_positions[0].y-R_Row_y-2.2*self.nmos_R_Row_ptx.height+drc["minwidth_metal1"]*1.1
                     
                 height=abs(R_Row_y-self.R_Row_position.y)
                 self.add_contact (layers=("poly", "contact", "metal1"),
@@ -1143,7 +1349,7 @@ class multiport(design.design):
                 R_Row_y=R_Row_y-2.5*drc["metal1_to_metal1"]-2.5*drc["metal1_to_metal1"]
                 
 
-            """**************** added for right side ptx*******************************************************"""
+            """****************lima added for right side ptx*******************************************************"""
             if (i%2==0):
                 self.nmos_right_side_position=vector(xoffset_side_right,yoffset_side_right+drc["metal1_to_metal1"])
                 #xoffset_side_left=xoffset_side_left-self.nmos_ptx.active_contact_positions[1].x
@@ -1152,7 +1358,9 @@ class multiport(design.design):
                           offset= self.nmos_right_side_position,
                           mirror="MX")
                 self.connect_inst([ "RBL{0}".format(i),"Q","net{0}".format(i),"gnd"])
-              
+                #print("Lines Creating RBL ****************************")
+                #print("RBL{0}".format(i))
+                #extend poly to Q
 
 
                 poly_position_side_ptx=xoffset_side_right+self.nmos_ptx.poly_positions[0].x
@@ -1165,7 +1373,7 @@ class multiport(design.design):
                     
                 
                 self.add_contact (layers=("poly", "contact", "metal1"),
-                                 
+                                  #offset=vector(poly_position_side_ptx,self.input_position_Q.y+drc["minwidth_metal1"]),
                                   offset=vector(poly_position_side_ptx,self.contact_Q_position.y+drc["minwidth_metal1"]),
                                   size=(1,1),
                                   rotate=270)
@@ -1180,7 +1388,13 @@ class multiport(design.design):
 
 
 
-               
+                """if(i==4):
+                    via_offset = vector(poly_position_side_ptx,self.input_position_Q.y+drc["minwidth_metal1"])
+                    layer_stack_via1 = ["metal1", "via1", "metal2"]   
+                    self.add_via(layer_stack_via1,via_offset,rotate=270)
+                    layer_stack_via2 = ["metal2", "via2", "metal3"] 
+                    self.add_via(layer_stack_via2,via_offset,rotate=270)"""
+
 
 
                 # Right RBL connected Adding via2 and  metal2  RBL
@@ -1188,14 +1402,14 @@ class multiport(design.design):
                 self.RBL_offset_old=vector(xoffset_RBL_right,viaoffset_side_right_y-self.height-(self.down_ptx_no+self.no_read_only_port)*drc["metal1_to_metal1"])
                 self.RBL_offset= vector(self.RBL_offset_old.x,self.BL_bar_position.y)
                 self.add_rect(layer="metal2",
-                              
+                               #offset=[xoffset_RBL_left,viaoffset_side_left_y-self.height-(self.down_ptx_no+self.no_read_only_port)*drc["metal1_to_metal1"]],
                                offset= vector(self.RBL_offset_old.x,self.BL_bar_position.y),
                                width=drc["minwidth_metal2"],
                                #height=(self.nmos1.height*self.down_ptx_no+1)+2*self.height)
                                height=self.height*6)
                 self.add_label(text="RBL{0}".format(i),
                               layer="metal2",
-                              
+                               #offset=[xoffset_RBL_left,viaoffset_y-self.height-(self.down_ptx_no+self.no_read_only_port)*drc["metal1_to_metal1"]]
                                offset=self.RBL_offset)
                 self.RBL_positions.append(self.RBL_offset)
                 via_side_right_position_y= self.nmos_right_side_position.y-self.nmos_ptx.active_width
@@ -1206,10 +1420,10 @@ class multiport(design.design):
 
 
                 # Right_RBL_bar connected
-               
+                #xoffset_side_right_bar= self.nmos_right_side_position.x-self.nmos_ptx.active_width-self.nmos_ptx.poly_width+self.nmos_ptx.active_contact.width
                 xoffset_side_right_bar= self.nmos_right_side_position.x+self.nmos_ptx.active_width+self.nmos_ptx.poly_width-self.nmos_ptx.active_contact.width
                 self.nmos_right_side_position_bar=vector(xoffset_side_right_bar,yoffset_side_left+drc["metal1_to_metal1"])
-               
+                #self.nmos_side_positions.append(self.nmos_side_position)
                 name_nmos = "nmos{0}".format(i+self.side_ptx_start_no+1)
                 #print(" Creating side Ptx "+ name_nmos)
                 self.nmos_ptx= ptx(width=self.nmos_size,
@@ -1221,12 +1435,12 @@ class multiport(design.design):
                           offset= self.nmos_right_side_position_bar,
                           mirror="MX")
                 self.connect_inst([ "RBL_bar{0}".format(i),"Q_bar","net{0}".format(i),"gnd"])
-                
-               
+                #print("Lines Creating RBL ****************************")
+                #print("RBL{0}".format(i))
                 self.nmos_side_position_right=self.nmos_right_side_position_bar
                 #poly extension Q bar:right
                 poly_position_side_ptx_bar=xoffset_side_right_bar+self.nmos_ptx.poly_positions[0].x
-               
+                #height=self.nmos_ptx.poly_positions[0].y- self.input_position_Q_bar.y-6*drc["minwidth_metal1"]
                
 
                 height=self.contact_Q_bar_position.y-self.nmos_right_side_position_bar.y
@@ -1247,7 +1461,189 @@ class multiport(design.design):
                 self.add_via(layer_stack_via2,via_offset_poly,rotate=90)
 
 
+
+                """if(i==4):
+                    via_offset = vector(poly_position_side_ptx,self.input_position_Q.y+drc["minwidth_metal1"])
+                    layer_stack_via1 = ["metal1", "via1", "metal2"]   
+                    self.add_via(layer_stack_via1,via_offset,rotate=270)
+                    layer_stack_via2 = ["metal2", "via2", "metal3"] 
+                    self.add_via(layer_stack_via2,via_offset,rotate=270)"""
+
+
+
+                # Right RBL connected Adding via2 and  metal2  RBL
+                xoffset_RBL_right=xoffset_side_right+self.nmos_ptx.active_contact_positions[0].x
+                self.RBL_offset_old=vector(xoffset_RBL_right,viaoffset_side_right_y-self.height-(self.down_ptx_no+self.no_read_only_port)*drc["metal1_to_metal1"])
+                self.RBL_offset= vector(self.RBL_offset_old.x,self.BL_bar_position.y)
+                self.add_rect(layer="metal2",
+                               #offset=[xoffset_RBL_left,viaoffset_side_left_y-self.height-(self.down_ptx_no+self.no_read_only_port)*drc["metal1_to_metal1"]],
+                               offset= vector(self.RBL_offset_old.x,self.BL_bar_position.y),
+                               width=drc["minwidth_metal2"],
+                               #height=(self.nmos1.height*self.down_ptx_no+1)+2*self.height)
+                               height=self.height*6)
+                """lIMQself.add_label(text="RBL{0}".format(i),
+                              layer="metal2",
+                               #offset=[xoffset_RBL_left,viaoffset_y-self.height-(self.down_ptx_no+self.no_read_only_port)*drc["metal1_to_metal1"]]
+                               offset=self.RBL_offset)"""
+
+                via_side_right_position_y= self.nmos_right_side_position.y-self.nmos_ptx.active_width
+                via_offset = [xoffset_RBL_right, via_side_right_position_y]
+                layer_stack_via1 = ["metal1", "via1", "metal2"]   
+                self.add_via(layer_stack_via1,via_offset)
+            
+
+
+                """# DEBUGGING****************right_RBL_bar connected
+                #xoffset_side_right_bar= self.nmos_right_side_position.x-self.nmos_ptx.active_width-self.nmos_ptx.poly_width+self.nmos_ptx.active_contact.width
+                xoffset_side_right_bar= self.nmos_right_side_position.x+self.nmos_ptx.active_width+self.nmos_ptx.poly_width-self.nmos_ptx.active_contact.width
+                self.nmos_right_side_position_bar=vector(xoffset_side_right_bar,yoffset_side_left+drc["metal1_to_metal1"])
+                #self.nmos_side_positions.append(self.nmos_side_position)
+                name_nmos = "nmos{0}".format(i+self.side_ptx_start_no+1)
+                print(" Creating side Ptx "+ name_nmos)
+                self.nmos_ptx= ptx(width=self.nmos_size,
+                           mults=self.tx_mults,
+                           tx_type= "nmos")
+                self.add_mod (self.nmos_ptx) 
+                self.add_inst(name=name_nmos,
+                          mod=self.nmos_ptx,
+                          offset= self.nmos_right_side_position_bar,
+                          mirror="MX")    
+
+                #match here!"""
                
+
+
+
+
+
+                
+
+                # Adding via2 and  metal2  RBL_bar
+                xoffset_RBL_bar_right=self.nmos_right_side_position_bar.x+self.nmos_ptx.active_contact_positions[1].x
+                self.RBL_bar_offset_old= vector(xoffset_RBL_bar_right,viaoffset_side_right_y-self.height-(self.down_ptx_no+self.no_read_only_port)*drc["metal1_to_metal1"])
+                self.RBL_bar_offset=vector(self.RBL_bar_offset_old.x,self.BL_bar_position.y)
+                self.add_rect(layer="metal2",
+                               offset=self.RBL_bar_offset,
+                               width=drc["minwidth_metal2"],
+                               #height=(self.nmos1.height*self.down_ptx_no+1)+2*self.height)
+                                height= self.height*6)
+                self.add_label(text="RBL_bar{0}".format(i),
+                              layer="metal2",
+                               #offset=[xoffset_RBL_bar_left,viaoffset_y-self.height-(self.down_ptx_no+self.no_read_only_port)*drc["metal1_to_metal1"]]
+                               offset=self.RBL_bar_offset)
+
+                #self.RBL_bar_name{0}="RBL_bar{0}".format(i)
+                self.RBL_bar_positions.append(self.RBL_bar_offset)
+                via_RBL_bar_right_position_y= self.nmos_right_side_position.y-self.nmos_ptx.active_width
+                via_offset = [xoffset_RBL_bar_right, via_RBL_bar_right_position_y]
+                layer_stack_via1 = ["metal1", "via1", "metal2"]   
+                self.add_via(layer_stack_via1,via_offset)
+
+            
+
+                #R_Row_ptx_origin=xoffset_side_right-drc["minwidth_metal1"]
+                #R_Row_ptx_origin=self.nmos_right_side_position.x
+                R_Row_ptx_origin=self.nmos_right_side_position_bar.x
+                xoffset_side_right= self.nmos_right_side_position_bar.x+self.nmos1.width
+                """creating ptx connecting to gnd"""
+                name_nmos = "nmos{0}".format(i+self.side_ptx_start_no+2)
+                #print(" Creating R-Row Ptx "+ name_nmos)
+                self.nmos_R_Row_ptx= ptx(width=self.nmos_size,
+                           mults=self.tx_mults,
+                             tx_type= "nmos")
+                self.add_mod (self.nmos_R_Row_ptx)    
+                #offset=vector(R_Row_ptx_origin_right+ self.nmos_ptx.active_contact_positions[0].x,  self.nmos_right_side_position_bar.y-self.nmos1.width-drc["minwidth_metal1"])         
+                #offset=vector(R_Row_ptx_origin,self.nmos_right_side_position_bar.y-self.nmos1.width-drc["minwidth_metal1"])
+                offset=vector(R_Row_ptx_origin,self.nmos_left_side_position_bar.y-self.nmos1.width-drc["minwidth_metal1"]*.3+ drc["metal1_to_metal1"] )
+                self.add_inst(name=name_nmos,
+                          mod=self.nmos_R_Row_ptx,
+                          offset= offset,
+                          mirror="MX")
+                self.connect_inst(["gnd","R_Row{0}".format(i),"net{0}".format(i),"gnd"])
+                self.R_Row_position_bar=offset
+                #Connect Source of R-Row ptx to gnd  
+                height=(7.5)*drc["metal1_to_metal1"]
+               
+              
+                #Connect Source of  R-Row_ptx to the  side_ptx Right side
+                    
+                #end= vector(R_Row_ptx_origin+self.nmos_R_Row_ptx.active_contact_positions[0].x+drc["minwidth_metal1"]*.3,self.nmos_side_position_right.y-self.nmos_ptx.active_contact_positions[1].y)  
+                #start=vector(R_Row_ptx_origin+self.nmos_R_Row_ptx.active_contact_positions[0].x+drc["minwidth_metal1"]*.3, self.R_Row_position.y-self.nmos_R_Row_ptx.active_contact.height-drc["minwidth_metal1"]*1.5)
+                #self.add_path("metal1",[start,end])
+
+                end= vector(R_Row_ptx_origin+self.nmos_R_Row_ptx.active_contact_positions[0].x+drc["minwidth_metal1"]*.5,self.nmos_side_position_left.y-self.nmos_ptx.active_contact_positions[1].y)  
+                start=vector(R_Row_ptx_origin+self.nmos_R_Row_ptx.active_contact_positions[0].x+drc["minwidth_metal1"]*.5, self.R_Row_position.y-self.nmos_R_Row_ptx.active_contact.height-drc["minwidth_metal1"]*2.3)
+               
+                self.add_path("metal1",[start,end])
+                self.add_label(text="net{0}".format(i), layer="metal1",offset=vector(start.x,end.y-self.nmos1.width*.5))
+                NET_offset_RIGHT=vector(start.x,end.y-self.nmos1.width*.5)
+                self.NET_positions.append(NET_offset_RIGHT)
+                #Connect drain of  R-Row ptx to the gnd
+                #end= vector(R_Row_ptx_origin+self.nmos_R_Row_ptx.active_contact_positions[1].x+drc["minwidth_metal1"],self.R_Row_position.y-self.nmos_R_Row_ptx.active_contact_positions[1].y)  
+                start=vector(R_Row_ptx_origin+self.nmos_R_Row_ptx.active_contact_positions[1].x+drc["minwidth_metal1"], self.gnd_position.y)
+                end= vector(R_Row_ptx_origin+self.nmos_R_Row_ptx.active_contact_positions[1].x+drc["minwidth_metal1"],self.R_Row_position.y-self.nmos_ptx.active_width*.1)
+                self.add_path("metal1",[start,end])
+               
+                """self.add_label(text="net{0}".format(i),
+                           layer="metal1",
+                           offset=end)"""
+                
+
+
+                """#connect Poly R-Row Ptx
+                poly_position_R_Row_ptx=R_Row_ptx_origin+self.nmos_R_Row_ptx.poly_positions[0].x+drc["minwidth_poly"]
+                height=self.nmos_R_Row_ptx.poly_positions[0].y-R_Row_y_bar-2.6*self.nmos_R_Row_ptx.height+drc["minwidth_metal1"]*1.1
+                   
+                
+                self.add_contact (layers=("poly", "contact", "metal1"),
+                                  offset=vector(poly_position_R_Row_ptx,R_Row_y_bar+drc["minwidth_metal1"]),
+                                  size=(1,1),
+                                  rotate=270)
+
+
+
+                poly_position_R_Row_ptx=R_Row_ptx_origin+self.nmos_R_Row_ptx.poly_positions[0].x
+                self.add_rect(layer="metal3",
+                      offset= vector(poly_position_R_Row_ptx,self.nmos_R_Row_ptx.poly_positions[0].y),
+		      width=drc["minwidth_metal3"],                        
+                      height= drc["minwidth_metal3"])
+               
+                #height=self.nmos_R_Row_ptx.poly_positions[0].y-R_Row_y-2.2*self.nmos_R_Row_ptx.height+drc["minwidth_metal1"]*1.1
+
+              
+                R_Row_y_bar=R_Row_y_bar-2.5*drc["metal1_to_metal1"]-2.5*drc["metal1_to_metal1"]"""
+                
+
+                poly_position_R_Row_ptx=R_Row_ptx_origin+self.nmos_R_Row_ptx.poly_positions[0].x
+                """self.add_rect(layer="metal3",
+                      offset= vector(poly_position_R_Row_ptx,self.nmos_R_Row_ptx.poly_positions[0].y),
+		      width=drc["minwidth_metal3"],                        
+                      height= drc["minwidth_metal3"])"""
+               
+                #height=self.nmos_R_Row_ptx.poly_positions[0].y-R_Row_y-2.2*self.nmos_R_Row_ptx.height+drc["minwidth_metal1"]*1.1
+                    
+                height=abs(R_Row_y_bar-self.R_Row_position.y)
+                self.add_contact (layers=("poly", "contact", "metal1"),
+                                  offset=vector(poly_position_R_Row_ptx,R_Row_y_bar+drc["minwidth_metal1"]),
+                                  size=(1,1),
+                                  rotate=270)
+                offset=vector(poly_position_R_Row_ptx,R_Row_y_bar)
+                self.add_rect(layer="poly",
+                      offset=offset,
+		      width=drc["minwidth_poly"],                        
+                      height= height)
+
+
+                R_Row_y_bar=R_Row_y_bar-2.5*drc["metal1_to_metal1"]-2.5*drc["metal1_to_metal1"]
+
+
+
+
+
+
+
+
+
 
                 """lima end for right ptx"""
 
@@ -1261,7 +1657,7 @@ class multiport(design.design):
              self.end_of_rightside_ptx=self.right_end_figure_x
 
 
-    def extend_wells(self):
+    def extend_wells_lima(self):
         """ Extension of well """
         middle_point = (self.nmos_position1.y + self.nmos1.pwell_position.y
                            + self.nmos1.well_height
@@ -1279,7 +1675,8 @@ class multiport(design.design):
                       width=self.well_width,                        
                       height=self.nwell_height)
 
-       
+        #offset = self.pwell_position = vector(0, 0)
+        #self.pwell_height = middle_point
         offset = self.pwell_position = vector(self.end_of_ptx_position_left.x+self.nmos1.width,self.end_of_ptx_position_left.y-1.1*self.nmos1.height)
         self.pwell_height = middle_point-self.end_of_ptx_position_left.y+.3*self.nmos1.height
         pwell_right=self.pwell_rightlen=self.end_of_ptx_position_right.x+ self.nmos1.width*self.no_read_only_port
@@ -1292,14 +1689,16 @@ class multiport(design.design):
                       offset=offset,
 		      width=self.pwell_width,                        
                       height=self.pwell_height)
-		     
+		      #width=self.end_of_ptx_position_right.x-self.end_of_ptx_position_right.yx,
+		      #width=self.end_of_ptx_position_right.x-self.end_of_ptx_position_right.x,
+		      #height=self.pwell_height)
         self.add_rect(layer="vtg",
                       offset=offset,
                       width=self.pwell_width,                             
                       height=self.pwell_height)
         #offset=vector(offset.x+self.end_of_ptx_position_left.x,offset.y+self.end_of_ptx_position_left.y),
 
-    def extend_rails(self):
+    def extend_rails_lima(self):
         """ add power rails """
         gnd_width =self.gnd_width= self.end_of_ptx_position_right.x-self.end_of_ptx_position_left.x+ self.down_ptx_no*.5*self.nmos1.width+self.no_read_only_port*.5*self.nmos1.width
         #gnd_width=self.wordline_right.x+self.wordline_left.x
@@ -1338,8 +1737,10 @@ class multiport(design.design):
 
 
 
-    def extend_Q_and_Q_bar(self):
-       
+    def extend_Q_and_Q_bar_lima(self):
+        #self.Q_end_left=self.end_of_ptx_position_left.x-self.no_read_only_port*self.nmos1.width
+        #self.Q_end_right=self.end_of_ptx_position_right.x+(self.no_read_only_port+1)*self.nmos1.width
+                         
                         
         self.Q_end_left=self.end_of_ptx_position_left.x-(self.no_read_only_port-1)*self.nmos1.width
         self.Q_end_right=self.end_of_ptx_position_right.x+(self.no_read_only_port)*self.nmos1.width
@@ -1362,7 +1763,9 @@ class multiport(design.design):
 		      #width=self.end_of_leftside_ptx.x-3*self.nmos1.width,                        
                       width=self.width_Q,
                           height=drc["minwidth_metal3"])
-            
+            """self.add_label(text="Q_bar",
+                       layer="metal3",
+                           offset= self.Q_offset_bar)""" 
 
         
         #Space between gnd_metal1 and metal1 below ground:Left ptx no
@@ -1388,31 +1791,3 @@ class multiport(design.design):
 
             R_Row_cnt=R_Row_cnt+1
             row_y=row_y-drc["metal1_to_metal1"]-1.5*drc["minwidth_metal1"]
-            
-
-   
-       
-                         
-                    
-                       
-        
-       
-                         
-                        
-       
-                     
-
-
-   
-       
-		     
-                     
-
-        
-       
-      
-		      
-
-
-
- 
